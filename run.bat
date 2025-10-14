@@ -1,10 +1,10 @@
 @echo off
 echo =======================================
-echo   Запуск игры Мементо
+echo   Start Memory Game
 echo =======================================
 echo.
 
-echo Компиляция и запуск приложения...
+echo Compilation and application launch...
 gradlew.bat run
 
 pause
