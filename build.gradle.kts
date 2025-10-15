@@ -29,3 +29,16 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+// Задача для копирования анимаций в resources
+tasks.register<Copy>("copyAnimations") {
+    from("Animation") {
+        include("*.gif")
+    }
+    into("src/main/resources/animations")
+}
+
+// Автоматически копировать анимации перед компиляцией
+tasks.named("processResources") {
+    dependsOn("copyAnimations")
+}
+

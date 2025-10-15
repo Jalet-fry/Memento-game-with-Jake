@@ -4,6 +4,8 @@ import kotlinx.coroutines.*
 import java.awt.*
 import java.awt.event.ActionListener
 import javax.swing.*
+import java.io.File
+import java.net.URL
 
 class MemoryGame : JFrame("Игра Мементо") {
     
@@ -20,8 +22,10 @@ class MemoryGame : JFrame("Игра Мементо") {
     private lateinit var attemptsLabel: JLabel
     private lateinit var statusLabel: JLabel
     private lateinit var gamePanel: JPanel
+    private lateinit var animationPanel: JPanel
     
     private var timerJob: Job? = null
+    private var currentAnimationLabel: JLabel? = null
     
     private val gridSize = 4 // 4x4 сетка = 16 карточек = 8 пар
     private val totalPairs = (gridSize * gridSize) / 2
@@ -38,10 +42,43 @@ class MemoryGame : JFrame("Игра Мементо") {
         "/images/card8.jpg"
     )
     
+    // Пути к анимациям
+    private val animationPaths = listOf(
+        "/animations/001.gif",
+        "/animations/002.gif",
+        "/animations/003.gif",
+        "/animations/004.gif",
+        "/animations/005.gif",
+        "/animations/006.gif",
+        "/animations/007.gif",
+        "/animations/008.gif",
+        "/animations/009.gif",
+        "/animations/010.gif",
+        "/animations/011.gif",
+        "/animations/012.gif",
+        "/animations/013.gif",
+        "/animations/014.gif",
+        "/animations/015.gif",
+        "/animations/016.gif",
+        "/animations/017.gif",
+        "/animations/018.gif",
+        "/animations/019.gif",
+        "/animations/020.gif"
+    )
+    
+    // Специальные анимации для событий
+    private val specialAnimations = mapOf(
+        "match" to "/animations/Jake laugh.gif",
+        "win" to "/animations/Jake dance.gif",
+        "miss" to "/animations/Jake vig eyes.gif",
+        "start" to "/animations/Jake.gif"
+    )
+    
     init {
         setupUI()
         initGame()
         startTimer()
+        showAnimation("start")
     }
     
     private fun setupUI() {
@@ -72,6 +109,19 @@ class MemoryGame : JFrame("Игра Мементо") {
         infoPanel.add(statusLabel)
         infoPanel.add(attemptsLabel)
         
+        // Панель анимации
+        animationPanel = JPanel(BorderLayout())
+        animationPanel.background = Color(30, 30, 40)
+        animationPanel.preferredSize = Dimension(200, 200)
+        animationPanel.border = BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(Color(100, 100, 100), 2),
+            "Анимация",
+            javax.swing.border.TitledBorder.CENTER,
+            javax.swing.border.TitledBorder.TOP,
+            Font("Arial", Font.BOLD, 14),
+            Color.WHITE
+        )
+        
         // Игровая панель
         gamePanel = JPanel(GridLayout(gridSize, gridSize, 5, 5))
         gamePanel.background = Color(30, 30, 40)
@@ -98,11 +148,17 @@ class MemoryGame : JFrame("Игра Мементо") {
         buttonPanel.add(newGameButton)
         buttonPanel.add(exitButton)
         
+        // Создаем центральную панель с игрой и анимацией
+        val centerPanel = JPanel(BorderLayout(10, 0))
+        centerPanel.background = Color(30, 30, 40)
+        centerPanel.add(gamePanel, BorderLayout.CENTER)
+        centerPanel.add(animationPanel, BorderLayout.EAST)
+        
         add(infoPanel, BorderLayout.NORTH)
-        add(gamePanel, BorderLayout.CENTER)
+        add(centerPanel, BorderLayout.CENTER)
         add(buttonPanel, BorderLayout.SOUTH)
         
-        setSize(600, 700)
+        setSize(800, 700)
         setLocationRelativeTo(null)
         background = Color(30, 30, 40)
     }
@@ -162,6 +218,7 @@ class MemoryGame : JFrame("Игра Мементо") {
         
         if (first.getCardId() == second.getCardId()) {
             // Совпадение!
+            showAnimation("match")
             SwingUtilities.invokeLater {
                 first.setMatched()
                 second.setMatched()
@@ -177,6 +234,7 @@ class MemoryGame : JFrame("Игра Мементо") {
             }
         } else {
             // Не совпали
+            showAnimation("miss")
             statusLabel.text = "Не совпало! Попробуйте еще"
             statusLabel.foreground = Color.ORANGE
             
@@ -198,6 +256,7 @@ class MemoryGame : JFrame("Игра Мементо") {
     private fun checkWin() {
         if (matchedPairs == totalPairs) {
             timerJob?.cancel()
+            showAnimation("win")
             statusLabel.text = "🎉 ПОБЕДА! 🎉"
             statusLabel.foreground = Color.YELLOW
             
@@ -268,6 +327,79 @@ class MemoryGame : JFrame("Игра Мементо") {
         
         initGame()
         startTimer()
+    }
+    
+    /**
+     * Показывает анимацию по типу события
+     */
+    private fun showAnimation(eventType: String) {
+        println("Запрос анимации для события: $eventType")
+        val animationPath = specialAnimations[eventType] ?: animationPaths.random()
+        println("Выбранный путь анимации: $animationPath")
+        showGifAnimation(animationPath)
+    }
+    
+    /**
+     * Показывает случайную анимацию
+     */
+    private fun showRandomAnimation() {
+        val randomPath = animationPaths.random()
+        showGifAnimation(randomPath)
+    }
+    
+    /**
+     * Показывает GIF анимацию
+     */
+    private fun showGifAnimation(animationPath: String) {
+        SwingUtilities.invokeLater {
+            try {
+                println("Попытка загрузить анимацию: $animationPath")
+                
+                // Удаляем предыдущую анимацию
+                currentAnimationLabel?.let { animationPanel.remove(it) }
+                
+                // Загружаем новую анимацию
+                val resourceUrl = javaClass.getResource(animationPath)
+                if (resourceUrl != null) {
+                    println("Ресурс найден: $resourceUrl")
+                    val imageIcon = ImageIcon(resourceUrl)
+                    if (imageIcon.iconWidth > 0) {
+                        println("Анимация загружена успешно: ${imageIcon.iconWidth}x${imageIcon.iconHeight}")
+                        currentAnimationLabel = JLabel(imageIcon).apply {
+                            horizontalAlignment = SwingConstants.CENTER
+                            verticalAlignment = SwingConstants.CENTER
+                        }
+                        animationPanel.add(currentAnimationLabel, BorderLayout.CENTER)
+                        animationPanel.revalidate()
+                        animationPanel.repaint()
+                    } else {
+                        println("Анимация не загрузилась (размер 0)")
+                        showRandomAnimation()
+                    }
+                } else {
+                    println("Ресурс не найден: $animationPath")
+                    // Показываем случайную анимацию в случае ошибки
+                    showRandomAnimation()
+                }
+            } catch (e: Exception) {
+                println("Ошибка загрузки анимации: $animationPath - ${e.message}")
+                e.printStackTrace()
+                // Показываем случайную анимацию в случае ошибки
+                showRandomAnimation()
+            }
+        }
+    }
+    
+    /**
+     * Очищает панель анимации
+     */
+    private fun clearAnimation() {
+        SwingUtilities.invokeLater {
+            currentAnimationLabel?.let { animationPanel.remove(it) }
+            currentAnimationLabel = null
+            animationPanel.revalidate()
+            animationPanel.repaint()
+        }
     }
 }
 
