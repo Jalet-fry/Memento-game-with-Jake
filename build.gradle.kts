@@ -42,3 +42,42 @@ tasks.named("processResources") {
     dependsOn("copyAnimations")
 }
 
+// Настройка для создания исполняемого JAR
+tasks.named<Jar>("jar") {
+    manifest {
+        attributes["Main-Class"] = "com.memorygame.MainKt"
+    }
+    
+    // Включаем все зависимости в JAR
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+    
+    // Избегаем дублирования файлов
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    archiveBaseName.set("MemoryGame")
+    archiveVersion.set("1.0")
+}
+
+// Создаем задачу для сборки готового приложения
+tasks.register<Jar>("fatJar") {
+    group = "build"
+    description = "Создает исполняемый JAR файл с зависимостями"
+    
+    manifest {
+        attributes["Main-Class"] = "com.memorygame.MainKt"
+        attributes["Implementation-Title"] = "Memory Game with Jake"
+        attributes["Implementation-Version"] = "1.0"
+    }
+    
+    archiveBaseName.set("MemoryGame")
+    archiveVersion.set("1.0")
+    
+    from(sourceSets.main.get().output)
+    dependsOn(configurations.runtimeClasspath)
+    from({
+        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
+    })
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+

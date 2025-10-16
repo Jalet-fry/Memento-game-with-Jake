@@ -23,9 +23,22 @@ class MemoryGame : JFrame("Игра Мементо") {
     private lateinit var statusLabel: JLabel
     private lateinit var gamePanel: JPanel
     private lateinit var animationPanel: JPanel
+    private lateinit var controlPanel: JPanel // Новая панель управления
+    private lateinit var infoPanel: JPanel
+    private lateinit var buttonPanel: JPanel
     
     private var timerJob: Job? = null
     private var currentAnimationLabel: JLabel? = null
+    
+    // Новые переменные для улучшений
+    private var animationsEnabled = true
+    private var soundEnabled = true
+    private var currentTheme = "dark"
+    private var difficulty = 4 // 4x4 по умолчанию
+    private var gamesPlayed = 0
+    private var bestTime = Int.MAX_VALUE
+    private var totalMatches = 0
+    private var achievements = mutableSetOf<String>()
     
     private val gridSize = 4 // 4x4 сетка = 16 карточек = 8 пар
     private val totalPairs = (gridSize * gridSize) / 2
@@ -86,7 +99,7 @@ class MemoryGame : JFrame("Игра Мементо") {
         layout = BorderLayout(10, 10)
         
         // Панель информации сверху
-        val infoPanel = JPanel(GridLayout(1, 3, 10, 0))
+        infoPanel = JPanel(GridLayout(1, 3, 10, 0))
         infoPanel.background = Color(40, 40, 50)
         infoPanel.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
         
@@ -109,18 +122,18 @@ class MemoryGame : JFrame("Игра Мементо") {
         infoPanel.add(statusLabel)
         infoPanel.add(attemptsLabel)
         
-        // Панель анимации
-        animationPanel = JPanel(BorderLayout())
-        animationPanel.background = Color(30, 30, 40)
-        animationPanel.preferredSize = Dimension(200, 200)
-        animationPanel.border = BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(Color(100, 100, 100), 2),
-            "Анимация",
-            javax.swing.border.TitledBorder.CENTER,
-            javax.swing.border.TitledBorder.TOP,
-            Font("Arial", Font.BOLD, 14),
-            Color.WHITE
-        )
+                // Панель анимации (увеличена)
+                animationPanel = JPanel(BorderLayout())
+                animationPanel.background = Color(30, 30, 40)
+                animationPanel.preferredSize = Dimension(300, 400) // Увеличено с 200x200 до 300x400
+                animationPanel.border = BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(Color(100, 100, 100), 2),
+                    "🎬 Анимация Jake",
+                    javax.swing.border.TitledBorder.CENTER,
+                    javax.swing.border.TitledBorder.TOP,
+                    Font("Arial", Font.BOLD, 16),
+                    Color(255, 215, 0) // Золотой цвет
+                )
         
         // Игровая панель
         gamePanel = JPanel(GridLayout(gridSize, gridSize, 5, 5))
@@ -128,7 +141,7 @@ class MemoryGame : JFrame("Игра Мементо") {
         gamePanel.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
         
         // Панель кнопок снизу
-        val buttonPanel = JPanel(FlowLayout())
+        buttonPanel = JPanel(FlowLayout())
         buttonPanel.background = Color(40, 40, 50)
         
         val newGameButton = JButton("Новая игра").apply {
@@ -145,6 +158,72 @@ class MemoryGame : JFrame("Игра Мементо") {
             }
         }
         
+        // Создаем панель управления
+        controlPanel = JPanel(FlowLayout(FlowLayout.CENTER, 10, 5))
+        controlPanel.background = Color(40, 40, 50)
+        
+        val animToggleButton = JButton("🎬 Анимации: ВКЛ").apply {
+            font = Font("Arial", Font.BOLD, 12)
+            addActionListener {
+                animationsEnabled = !animationsEnabled
+                text = if (animationsEnabled) "🎬 Анимации: ВКЛ" else "🎬 Анимации: ВЫКЛ"
+                if (!animationsEnabled) clearAnimation()
+            }
+        }
+        
+        val soundToggleButton = JButton("🔊 Звук: ВКЛ").apply {
+            font = Font("Arial", Font.BOLD, 12)
+            addActionListener {
+                soundEnabled = !soundEnabled
+                text = if (soundEnabled) "🔊 Звук: ВКЛ" else "🔊 Звук: ВЫКЛ"
+            }
+        }
+        
+        val difficultyButton = JButton("📊 Сложность: 4x4").apply {
+            font = Font("Arial", Font.BOLD, 12)
+            addActionListener {
+                val options = arrayOf("4x4 (Легко)", "6x6 (Средне)", "8x8 (Сложно)")
+                val choice = JOptionPane.showOptionDialog(
+                    this@MemoryGame,
+                    "Выберите уровень сложности:",
+                    "Сложность игры",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]
+                )
+                when (choice) {
+                    0 -> { difficulty = 4; text = "📊 Сложность: 4x4" }
+                    1 -> { difficulty = 6; text = "📊 Сложность: 6x6" }
+                    2 -> { difficulty = 8; text = "📊 Сложность: 8x8" }
+                }
+                if (choice != JOptionPane.CLOSED_OPTION) {
+                    resetGame()
+                }
+            }
+        }
+        
+        val statsButton = JButton("📈 Статистика").apply {
+            font = Font("Arial", Font.BOLD, 12)
+            addActionListener { showStatistics() }
+        }
+        
+        val themeButton = JButton("🎨 Тема: Темная").apply {
+            font = Font("Arial", Font.BOLD, 12)
+            addActionListener {
+                currentTheme = if (currentTheme == "dark") "light" else "dark"
+                text = if (currentTheme == "dark") "🎨 Тема: Темная" else "🎨 Тема: Светлая"
+                applyTheme()
+            }
+        }
+        
+        controlPanel.add(animToggleButton)
+        controlPanel.add(soundToggleButton)
+        controlPanel.add(difficultyButton)
+        controlPanel.add(themeButton)
+        controlPanel.add(statsButton)
+        
         buttonPanel.add(newGameButton)
         buttonPanel.add(exitButton)
         
@@ -154,11 +233,18 @@ class MemoryGame : JFrame("Игра Мементо") {
         centerPanel.add(gamePanel, BorderLayout.CENTER)
         centerPanel.add(animationPanel, BorderLayout.EAST)
         
-        add(infoPanel, BorderLayout.NORTH)
-        add(centerPanel, BorderLayout.CENTER)
-        add(buttonPanel, BorderLayout.SOUTH)
+        // Создаем главную панель с вертикальным расположением
+        val mainPanel = JPanel(BorderLayout())
+        mainPanel.background = Color(30, 30, 40)
         
-        setSize(800, 700)
+        mainPanel.add(infoPanel, BorderLayout.NORTH)
+        mainPanel.add(controlPanel, BorderLayout.CENTER)
+        mainPanel.add(centerPanel, BorderLayout.CENTER)
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH)
+        
+        add(mainPanel)
+        
+        setSize(1200, 900) // Еще больше для всех новых панелей
         setLocationRelativeTo(null)
         background = Color(30, 30, 40)
     }
@@ -167,9 +253,16 @@ class MemoryGame : JFrame("Игра Мементо") {
         cards.clear()
         gamePanel.removeAll()
         
+        // Обновляем размер сетки в зависимости от сложности
+        val currentGridSize = difficulty
+        val currentTotalPairs = (currentGridSize * currentGridSize) / 2
+        
+        // Обновляем layout панели игры
+        gamePanel.layout = GridLayout(currentGridSize, currentGridSize, 5, 5)
+        
         // Создаем список пар карточек
         val cardPairs = mutableListOf<Pair<Int, String>>()
-        for (i in 0 until totalPairs) {
+        for (i in 0 until currentTotalPairs) {
             val imagePath = imagePaths[i % imagePaths.size]
             cardPairs.add(Pair(i, imagePath))
             cardPairs.add(Pair(i, imagePath))
@@ -186,6 +279,12 @@ class MemoryGame : JFrame("Игра Мементо") {
             gamePanel.add(card)
         }
         
+        matchedPairs = 0
+        attempts = 0
+        attemptsLabel.text = "Попытки: $attempts"
+        statusLabel.text = "Найдите пары! Сложность: ${currentGridSize}x${currentGridSize}"
+        statusLabel.foreground = Color(100, 200, 100)
+        
         gamePanel.revalidate()
         gamePanel.repaint()
     }
@@ -199,10 +298,12 @@ class MemoryGame : JFrame("Игра Мементо") {
             firstCard == null -> {
                 firstCard = card
                 card.flip()
+                playSound("flip")
             }
             secondCard == null && card != firstCard -> {
                 secondCard = card
                 card.flip()
+                playSound("flip")
                 attempts++
                 updateAttemptsLabel()
                 checkMatch()
@@ -219,11 +320,13 @@ class MemoryGame : JFrame("Игра Мементо") {
         if (first.getCardId() == second.getCardId()) {
             // Совпадение!
             showAnimation("match")
+            playSound("match")
+            showParticleEffect(first, second) // Добавляем эффект частиц
             SwingUtilities.invokeLater {
                 first.setMatched()
                 second.setMatched()
                 matchedPairs++
-                statusLabel.text = "Совпадение! ($matchedPairs/$totalPairs)"
+                statusLabel.text = "✨ Совпадение! ($matchedPairs/$totalPairs) ✨"
                 statusLabel.foreground = Color.GREEN
                 
                 firstCard = null
@@ -235,6 +338,7 @@ class MemoryGame : JFrame("Игра Мементо") {
         } else {
             // Не совпали
             showAnimation("miss")
+            playSound("miss")
             statusLabel.text = "Не совпало! Попробуйте еще"
             statusLabel.foreground = Color.ORANGE
             
@@ -257,14 +361,32 @@ class MemoryGame : JFrame("Игра Мементо") {
         if (matchedPairs == totalPairs) {
             timerJob?.cancel()
             showAnimation("win")
+            playSound("win")
             statusLabel.text = "🎉 ПОБЕДА! 🎉"
             statusLabel.foreground = Color.YELLOW
             
+            // Обновляем статистику
+            gamesPlayed++
+            totalMatches += matchedPairs
+            if (elapsedSeconds < bestTime) {
+                bestTime = elapsedSeconds
+                achievements.add("🏆 Рекорд времени!")
+            }
+            
+            // Проверяем достижения
+            checkAchievements()
+            
             val message = """
-                Поздравляем! Вы выиграли!
+                🎉 Поздравляем! Вы выиграли! 🎉
                 
-                Время: ${formatTime(elapsedSeconds)}
-                Попытки: $attempts
+                ⏱️ Время: ${formatTime(elapsedSeconds)}
+                🎯 Попытки: $attempts
+                📊 Сложность: ${difficulty}x${difficulty}
+                
+                🏆 Лучшее время: ${if (bestTime == Int.MAX_VALUE) "Нет" else formatTime(bestTime)}
+                🎮 Игр сыграно: $gamesPlayed
+                
+                ${if (achievements.isNotEmpty()) "🏅 Достижения: ${achievements.joinToString(", ")}" else ""}
                 
                 Хотите сыграть еще раз?
             """.trimIndent()
@@ -272,7 +394,7 @@ class MemoryGame : JFrame("Игра Мементо") {
             val result = JOptionPane.showConfirmDialog(
                 this,
                 message,
-                "Победа!",
+                "🎉 Победа! 🎉",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.INFORMATION_MESSAGE
             )
@@ -333,6 +455,8 @@ class MemoryGame : JFrame("Игра Мементо") {
      * Показывает анимацию по типу события
      */
     private fun showAnimation(eventType: String) {
+        if (!animationsEnabled) return
+        
         println("Запрос анимации для события: $eventType")
         val animationPath = specialAnimations[eventType] ?: animationPaths.random()
         println("Выбранный путь анимации: $animationPath")
@@ -400,6 +524,196 @@ class MemoryGame : JFrame("Игра Мементо") {
             animationPanel.revalidate()
             animationPanel.repaint()
         }
+    }
+    
+    /**
+     * Показывает статистику игрока
+     */
+    private fun showStatistics() {
+        val avgTime = if (gamesPlayed > 0) (bestTime.toDouble() / gamesPlayed) else 0.0
+        val avgAttempts = if (gamesPlayed > 0) (totalMatches.toDouble() / gamesPlayed) else 0.0
+        
+        val message = """
+            📊 СТАТИСТИКА ИГРЫ 📊
+            
+            🎮 Всего игр: $gamesPlayed
+            🏆 Лучшее время: ${if (bestTime == Int.MAX_VALUE) "Нет" else formatTime(bestTime)}
+            ⏱️ Среднее время: ${String.format("%.1f", avgTime)} сек
+            🎯 Всего совпадений: $totalMatches
+            📈 Среднее совпадений за игру: ${String.format("%.1f", avgAttempts)}
+            
+            🏅 Достижения (${achievements.size}):
+            ${if (achievements.isEmpty()) "Пока нет достижений" else achievements.joinToString("\n")}
+            
+            🎨 Текущие настройки:
+            • Анимации: ${if (animationsEnabled) "Включены" else "Выключены"}
+            • Звук: ${if (soundEnabled) "Включен" else "Выключен"}
+            • Сложность: ${difficulty}x${difficulty}
+        """.trimIndent()
+        
+        JOptionPane.showMessageDialog(
+            this,
+            message,
+            "📊 Статистика",
+            JOptionPane.INFORMATION_MESSAGE
+        )
+    }
+    
+    /**
+     * Проверяет и добавляет достижения
+     */
+    private fun checkAchievements() {
+        when {
+            gamesPlayed == 1 -> achievements.add("🎮 Первая игра!")
+            gamesPlayed == 10 -> achievements.add("🔥 10 игр сыграно!")
+            gamesPlayed == 50 -> achievements.add("💎 50 игр сыграно!")
+            gamesPlayed == 100 -> achievements.add("👑 100 игр сыграно!")
+            attempts <= 8 && difficulty == 4 -> achievements.add("🎯 Мастер 4x4!")
+            attempts <= 18 && difficulty == 6 -> achievements.add("🎯 Мастер 6x6!")
+            attempts <= 32 && difficulty == 8 -> achievements.add("🎯 Мастер 8x8!")
+            elapsedSeconds <= 30 -> achievements.add("⚡ Молниеносная победа!")
+            elapsedSeconds <= 60 -> achievements.add("🚀 Быстрая победа!")
+            totalMatches >= 100 -> achievements.add("💯 100 совпадений!")
+            totalMatches >= 500 -> achievements.add("🎊 500 совпадений!")
+        }
+    }
+    
+    /**
+     * Воспроизводит звуковой эффект (заглушка)
+     */
+    private fun playSound(soundType: String) {
+        if (!soundEnabled) return
+        
+        // Здесь можно добавить реальные звуковые эффекты
+        when (soundType) {
+            "match" -> println("🔊 Звук совпадения")
+            "miss" -> println("🔊 Звук промаха")
+            "win" -> println("🔊 Звук победы")
+            "flip" -> println("🔊 Звук переворота карты")
+        }
+    }
+    
+    /**
+     * Показывает эффект частиц при совпадении карт
+     */
+    private fun showParticleEffect(card1: MemoryCard, card2: MemoryCard) {
+        if (!animationsEnabled) return
+        
+        SwingUtilities.invokeLater {
+            // Создаем временные метки с эмодзи для эффекта частиц
+            val particleLabels = mutableListOf<JLabel>()
+            val colors = arrayOf(Color.YELLOW, Color.ORANGE, Color.PINK, Color.CYAN, Color.MAGENTA)
+            val emojis = arrayOf("✨", "⭐", "💫", "🌟", "💎")
+            
+            // Получаем позиции карт
+            val card1Bounds = card1.bounds
+            val card2Bounds = card2.bounds
+            
+            // Создаем 10 частиц
+            repeat(10) { i ->
+                val particle = JLabel(emojis[i % emojis.size]).apply {
+                    font = Font("Arial", Font.BOLD, 16)
+                    foreground = colors[i % colors.size]
+                    size = Dimension(20, 20)
+                    
+                    // Позиционируем частицы между картами
+                    val centerX = (card1Bounds.x + card1Bounds.width/2 + card2Bounds.x + card2Bounds.width/2) / 2
+                    val centerY = (card1Bounds.y + card1Bounds.height/2 + card2Bounds.y + card2Bounds.height/2) / 2
+                    
+                    location = Point(
+                        centerX + (Math.random() * 60 - 30).toInt(),
+                        centerY + (Math.random() * 60 - 30).toInt()
+                    )
+                }
+                
+                gamePanel.add(particle)
+                particleLabels.add(particle)
+                gamePanel.revalidate()
+                gamePanel.repaint()
+            }
+            
+            // Анимация исчезновения частиц
+            Timer(50) { timer ->
+                particleLabels.forEach { particle ->
+                    val currentLocation = particle.location
+                    particle.location = Point(
+                        currentLocation.x + (Math.random() * 4 - 2).toInt(),
+                        currentLocation.y - 2
+                    )
+                    particle.foreground = Color(
+                        particle.foreground.red,
+                        particle.foreground.green,
+                        particle.foreground.blue,
+                        maxOf(0, particle.foreground.alpha - 25)
+                    )
+                }
+                gamePanel.repaint()
+            }.apply {
+                isRepeats = true
+                start()
+            }
+            
+            // Удаляем частицы через 2 секунды
+            Timer(2000) { _ ->
+                particleLabels.forEach { particle ->
+                    gamePanel.remove(particle)
+                }
+                gamePanel.revalidate()
+                gamePanel.repaint()
+            }.apply {
+                isRepeats = false
+                start()
+            }
+        }
+    }
+    
+    /**
+     * Применяет выбранную тему оформления
+     */
+    private fun applyTheme() {
+        when (currentTheme) {
+            "dark" -> {
+                // Темная тема (текущая)
+                background = Color(30, 30, 40)
+                infoPanel.background = Color(40, 40, 50)
+                controlPanel.background = Color(40, 40, 50)
+                gamePanel.background = Color(30, 30, 40)
+                animationPanel.background = Color(30, 30, 40)
+                buttonPanel.background = Color(40, 40, 50)
+                
+                timerLabel.foreground = Color.WHITE
+                attemptsLabel.foreground = Color.WHITE
+                statusLabel.foreground = Color(100, 200, 100)
+            }
+            "light" -> {
+                // Светлая тема
+                background = Color(240, 240, 240)
+                infoPanel.background = Color(220, 220, 220)
+                controlPanel.background = Color(220, 220, 220)
+                gamePanel.background = Color(250, 250, 250)
+                animationPanel.background = Color(250, 250, 250)
+                buttonPanel.background = Color(220, 220, 220)
+                
+                timerLabel.foreground = Color.BLACK
+                attemptsLabel.foreground = Color.BLACK
+                statusLabel.foreground = Color(0, 100, 0)
+            }
+        }
+        
+        // Обновляем границы панели анимации
+        animationPanel.border = BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(
+                if (currentTheme == "dark") Color(100, 100, 100) else Color(150, 150, 150), 
+                2
+            ),
+            "🎬 Анимация Jake",
+            javax.swing.border.TitledBorder.CENTER,
+            javax.swing.border.TitledBorder.TOP,
+            Font("Arial", Font.BOLD, 16),
+            if (currentTheme == "dark") Color(255, 215, 0) else Color(200, 100, 0)
+        )
+        
+        repaint()
     }
 }
 
