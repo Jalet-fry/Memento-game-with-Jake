@@ -7,6 +7,15 @@ import javax.swing.BorderFactory
 import javax.swing.ImageIcon
 import javax.swing.JButton
 
+/**
+ * MemoryCard - класс карточки для игры "Мементо"
+ * 
+ * Представляет отдельную карточку в игре с возможностью переворота,
+ * совпадения и сброса состояния.
+ * 
+ * @param cardId уникальный идентификатор карточки
+ * @param imagePath путь к изображению карточки
+ */
 class MemoryCard(
     private val cardId: Int,
     private val imagePath: String
@@ -25,19 +34,8 @@ class MemoryCard(
     private val cardHeight = 120
     
     init {
-        // Загружаем изображение для лицевой стороны
-        frontImage = try {
-            val originalImage = ImageIO.read(javaClass.getResourceAsStream(imagePath))
-            originalImage.getScaledInstance(cardWidth, cardHeight, Image.SCALE_SMOOTH)
-        } catch (e: Exception) {
-            // Если не удалось загрузить, создаем цветную заглушку
-            val img = BufferedImage(cardWidth, cardHeight, BufferedImage.TYPE_INT_RGB)
-            val g = img.createGraphics()
-            g.color = Color(cardId * 30 % 256, cardId * 60 % 256, cardId * 90 % 256)
-            g.fillRect(0, 0, cardWidth, cardHeight)
-            g.dispose()
-            img
-        }
+        // Используем ResourceManager для загрузки изображения (паттерн Singleton)
+        frontImage = ResourceManager.getCardImage(imagePath)
         
         // Создаем изображение для задней стороны (вопросительный знак)
         backImage = createBackImage()
@@ -73,11 +71,17 @@ class MemoryCard(
         return img
     }
     
+    /**
+     * Переворачивает карточку (открывает/закрывает)
+     */
     fun flip() {
         isFlipped = !isFlipped
         updateImage()
     }
     
+    /**
+     * Помечает карточку как совпавшую и деактивирует её
+     */
     fun setMatched() {
         isMatched = true
         isEnabled = false
@@ -89,8 +93,15 @@ class MemoryCard(
         icon = ImageIcon(image)
     }
     
+    /**
+     * Возвращает уникальный идентификатор карточки
+     * @return ID карточки
+     */
     fun getCardId() = cardId
     
+    /**
+     * Сбрасывает карточку к начальному состоянию
+     */
     fun reset() {
         isFlipped = false
         isMatched = false

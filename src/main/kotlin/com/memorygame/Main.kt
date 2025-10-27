@@ -3,6 +3,12 @@ package com.memorygame
 import javax.swing.SwingUtilities
 import javax.swing.UIManager
 
+/**
+ * Точка входа в приложение "Игра Мементо с Jake"
+ * 
+ * Инициализирует пользовательский интерфейс и запускает игру.
+ * Использует системный Look and Feel для лучшего внешнего вида.
+ */
 fun main() {
     // Устанавливаем системный look and feel для лучшего вида
     try {
