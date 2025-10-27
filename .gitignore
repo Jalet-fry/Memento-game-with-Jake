@@ -1,3 +1,26 @@
+# Игнорировать все txt файлы
+*.txt
+
+# Игнорировать все md файлы кроме README.md
+*.md
+!README.md
+
+# Игнорировать всю папку lab3-4
+lab3-4/
+
+# Игнорировать другие файлы
+*.puml
+*.png
+*.pdf
+*.html
+*.xml
+*.json
+*.yaml
+*.yml
+*.properties
+*.log
+*.csv
+*.dot
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
