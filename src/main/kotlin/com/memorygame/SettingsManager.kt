@@ -83,7 +83,7 @@ object SettingsManager {
         }
         
         // Проверяем достижения
-        checkAchievements(time, matches)
+        checkAchievements(time)
     }
     
     /**
@@ -97,7 +97,7 @@ object SettingsManager {
     /**
      * Проверяет и добавляет достижения
      */
-    private fun checkAchievements(time: Int, matches: Int) {
+    private fun checkAchievements(time: Int) {
         when {
             _gamesPlayed == 1 -> addAchievement("🎮 Первая игра!")
             _gamesPlayed == 10 -> addAchievement("🔥 10 игр сыграно!")

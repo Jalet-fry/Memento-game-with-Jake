@@ -45,9 +45,6 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
     
     // Менеджеры (паттерны)
     private val gameStateManager = GameStateManager()
-    private val cardFlipHandler = CardFlipHandler()
-    private val cardMatchHandler = CardMatchHandler()
-    private val cardMismatchHandler = CardMismatchHandler()
     
     // Пути к ресурсам
     private val imagePaths = listOf(
@@ -299,10 +296,24 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
      * Создает обработчик клика по карточке
      */
     private fun createCardClickListener(card: MemoryCard) = ActionListener {
-        if (isBusy) return@ActionListener
+        if (isBusy || card.isMatched || card.isFlipped) return@ActionListener
         
-        // Используем GameStateManager для обработки клика
-        gameStateManager.getCurrentState().handleCardClick(this, card)
+        when {
+            firstCard == null -> {
+                firstCard = card
+                card.flip()
+                playSound("flip")
+                GameEventManager.notifyObservers(GameEvent.CARD_FLIPPED, card)
+            }
+            secondCard == null && card != firstCard -> {
+                secondCard = card
+                card.flip()
+                playSound("flip")
+                attempts++
+                updateAttemptsLabel()
+                checkMatch()
+            }
+        }
     }
     
     /**
@@ -315,14 +326,44 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         isBusy = true
         
         if (first.getCardId() == second.getCardId()) {
-            // Используем CardMatchHandler
-            cardMatchHandler.handleCardEvent(this, first)
+            // Совпадение!
+            showAnimation("match")
+            playSound("match")
+            SwingUtilities.invokeLater {
+                first.setMatched()
+                second.setMatched()
+                matchedPairs++
+                statusLabel.text = "✨ Совпадение! ($matchedPairs/${DifficultyManager.getCurrentStrategy().totalPairs}) ✨"
+                statusLabel.foreground = Color.GREEN
+                
+                firstCard = null
+                secondCard = null
+                isBusy = false
+                
+                checkWin()
+            }
+            GameEventManager.notifyObservers(GameEvent.CARDS_MATCHED, matchedPairs)
         } else {
-            // Используем CardMismatchHandler
-            cardMismatchHandler.handleCardEvent(this, first)
+            // Не совпали
+            showAnimation("miss")
+            playSound("miss")
+            statusLabel.text = "Не совпало! Попробуйте еще"
+            statusLabel.foreground = Color.ORANGE
+            
+            Timer(1000) { _ ->
+                first.flip()
+                second.flip()
+                firstCard = null
+                secondCard = null
+                isBusy = false
+                statusLabel.text = "Найдите пары!"
+                statusLabel.foreground = Color(100, 200, 100)
+            }.apply {
+                isRepeats = false
+                start()
+            }
+            GameEventManager.notifyObservers(GameEvent.CARDS_MISMATCHED, attempts)
         }
-        
-        isBusy = false
     }
     
     /**

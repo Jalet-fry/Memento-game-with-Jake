@@ -29,12 +29,12 @@ object ResourceManager {
                 val inputStream: InputStream? = ResourceManager::class.java.getResourceAsStream(path)
                 if (inputStream != null) {
                     javax.imageio.ImageIO.read(inputStream)?.getScaledInstance(120, 120, Image.SCALE_SMOOTH)
-                        ?: createFallbackImage(path)
+                        ?: createFallbackImage()
                 } else {
-                    createFallbackImage(path)
+                    createFallbackImage()
                 }
             } catch (e: Exception) {
-                createFallbackImage(path)
+                createFallbackImage()
             }
         }
     }
@@ -62,7 +62,7 @@ object ResourceManager {
     /**
      * Создает заглушку для изображения карточки
      */
-    private fun createFallbackImage(path: String): Image {
+    private fun createFallbackImage(): Image {
         val img = java.awt.image.BufferedImage(120, 120, java.awt.image.BufferedImage.TYPE_INT_RGB)
         val g = img.createGraphics()
         g.color = java.awt.Color(100, 100, 100)

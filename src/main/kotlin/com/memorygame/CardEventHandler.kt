@@ -203,14 +203,17 @@ class CardMismatchHandler : CardEventHandler() {
         val firstCard = game.getFirstCard()!!
         val secondCard = game.getSecondCard()!!
         
-        // Задержка перед переворотом карточек обратно
-        Thread.sleep(1000)
-        
-        firstCard.flip()
-        secondCard.flip()
-        
-        game.clearSelectedCards()
-        game.incrementAttempts()
+        // Используем Timer для задержки (не блокируем UI поток)
+        javax.swing.Timer(1000) { _ ->
+            firstCard.flip()
+            secondCard.flip()
+            game.clearSelectedCards()
+            game.incrementAttempts()
+            game.setState(IdleState())
+        }.apply {
+            isRepeats = false
+            start()
+        }
         
         return "mismatched"
     }
