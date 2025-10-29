@@ -1,5 +1,6 @@
 package com.memorygame
 
+import com.memorygame.ui.MemoryGame
 import javax.swing.SwingUtilities
 import javax.swing.UIManager
 

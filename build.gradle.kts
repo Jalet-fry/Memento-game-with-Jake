@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "1.9.20"
     application
+    jacoco
 }
 
 group = "com.memorygame"
@@ -43,6 +44,53 @@ tasks.test {
     testLogging {
         events("passed", "skipped", "failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    finalizedBy(tasks.jacocoTestReport) // Запускать отчет о покрытии после тестов
+}
+
+// Конфигурация JaCoCo для анализа покрытия кода
+jacoco {
+    toolVersion = "0.8.8"
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test) // Запускать только после тестов
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+    finalizedBy(tasks.jacocoTestCoverageVerification)
+    finalizedBy("openJacocoReport") // Автоматически открывать отчет
+}
+
+tasks.jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.60".toBigDecimal() // Минимум 60% покрытия
+            }
+        }
+    }
+}
+
+// Задача для автоматического открытия JaCoCo отчета
+tasks.register<Exec>("openJacocoReport") {
+    group = "reporting"
+    description = "Открывает HTML отчет JaCoCo в браузере"
+    
+    // Определяем команду в зависимости от операционной системы
+    if (System.getProperty("os.name").lowercase().contains("windows")) {
+        commandLine("cmd", "/c", "start", "", "build/reports/jacoco/test/html/index.html")
+    } else if (System.getProperty("os.name").lowercase().contains("mac")) {
+        commandLine("open", "build/reports/jacoco/test/html/index.html")
+    } else {
+        commandLine("xdg-open", "build/reports/jacoco/test/html/index.html")
+    }
+    
+    // Задача выполняется только если отчет существует
+    onlyIf { 
+        file("build/reports/jacoco/test/html/index.html").exists() 
     }
 }
 

@@ -1,84 +1,68 @@
 @echo off
 chcp 65001 >nul
-title Testing Game "Memory with Jake"
-color 0A
 
 echo.
 echo  ████████╗███████╗███████╗████████╗
 echo  ╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝
-echo     ██║   █████╗  ███████╗   ██║   
-echo     ██║   ██╔══╝  ╚════██║   ██║   
-echo     ██║   ███████╗███████║   ██║   
-echo     ╚═╝   ╚══════╝╚══════╝   ╚═╝   
+echo     ██║   █████╗  ███████╗   ██║
+echo     ██║   ██╔══╝  ╚════██║   ██║
+echo     ██║   ███████╗███████║   ██║
+echo     ╚═╝   ╚══════╝╚══════╝   ╚═╝
 echo.
 echo  ██████╗ ██████╗ ██╗   ██╗███████╗
 echo ██╔════╝██╔═══██╗██║   ██║██╔════╝
-echo ██║     ██║   ██║██║   ██║█████╗  
-echo ██║     ██║   ██║╚██╗ ██╔╝██╔══╝  
+echo ██║     ██║   ██║██║   ██║█████╗
+echo ██║     ██║   ██║╚██╗ ██╔╝██╔══╝
 echo ╚██████╗╚██████╔╝ ╚████╔╝ ███████╗
 echo  ╚═════╝ ╚═════╝   ╚═══╝  ╚══════╝
 echo.
-
 echo [QUICK TESTING LAUNCH]
 echo.
-
 echo Choose action:
-echo 1. Run all tests and open report
+echo 1. Run all tests with JaCoCo coverage
 echo 2. Run only successful tests
-echo 3. Open HTML report (if exists)
+echo 3. Open JaCoCo HTML report (if exists)
 echo 4. Create detailed report (PowerShell)
 echo 5. Exit
 echo.
-
 set /p choice="Enter number (1-5): "
 
-if "%choice%"=="1" goto :run_all
-if "%choice%"=="2" goto :run_successful
-if "%choice%"=="3" goto :open_report
-if "%choice%"=="4" goto :run_powershell
-if "%choice%"=="5" goto :exit
-goto :invalid
+if "%choice%"=="1" goto run_all_tests
+if "%choice%"=="2" goto run_successful_tests
+if "%choice%"=="3" goto open_jacoco_report
+if "%choice%"=="4" goto run_powershell
+if "%choice%"=="5" goto end
+goto invalid_choice
 
-:run_all
+:run_all_tests
 echo.
-echo [RUNNING ALL TESTS...]
-call gradlew.bat test --console=plain
-echo.
-echo [OPENING HTML REPORT...]
-if exist "build\reports\tests\test\index.html" (
-    start build\reports\tests\test\index.html
-    echo HTML report opened in browser!
+echo [RUNNING ALL TESTS WITH JACOCO...]
+.\gradlew.bat test jacocoTestReport openJacocoReport
+if %errorlevel% equ 0 (
+    echo.
+    echo [TESTS COMPLETED SUCCESSFULLY]
+    echo JaCoCo HTML report should have opened automatically!
 ) else (
-    echo HTML report not found.
+    echo Tests failed!
 )
-goto :end
+goto show_results
 
-:run_successful
+:run_successful_tests
 echo.
-echo [RUNNING SUCCESSFUL TESTS...]
-echo.
-echo === MemoryCard Tests ===
-call gradlew.bat test --tests "*MemoryCardTest*" --console=plain
-echo.
-echo === Main Tests ===
-call gradlew.bat test --tests "*MainTest*" --console=plain
-echo.
-echo === MemoryGame Tests ===
-call gradlew.bat test --tests "*MemoryGameTest*" --console=plain
-echo.
-echo All successful tests completed!
-goto :end
+echo [RUNNING SUCCESSFUL TESTS ONLY...]
+.\gradlew.bat test --continue
+goto show_results
 
-:open_report
+:open_jacoco_report
 echo.
-echo [OPENING HTML REPORT...]
-if exist "build\reports\tests\test\index.html" (
-    start build\reports\tests\test\index.html
-    echo HTML report opened in browser!
+echo [OPENING JACOCO HTML REPORT...]
+if exist "build\reports\jacoco\test\html\index.html" (
+    start "" "build\reports\jacoco\test\html\index.html"
+    echo JaCoCo HTML report opened in browser!
 ) else (
-    echo HTML report not found. Run tests first.
+    echo JaCoCo HTML report not found! Run tests first.
 )
-goto :end
+goto end
 
 :run_powershell
 echo.
@@ -86,27 +70,26 @@ echo [RUNNING POWERSHELL SCRIPT...]
 powershell -ExecutionPolicy Bypass -File "run_tests.ps1"
 goto :end
 
-:invalid
+:show_results
 echo.
-echo Invalid choice! Try again.
+echo ========================================
+echo          TESTING COMPLETED   
+echo ========================================
+echo.
+echo Results:
+echo - JaCoCo HTML report: build\reports\jacoco\test\html\index.html
+echo - JaCoCo XML report: build\reports\jacoco\test\jacocoTestReport.xml
+echo - Test HTML report: build\reports\tests\test\index.html
+echo - Code coverage: Check JaCoCo report
+echo.
+pause
+goto :end
+
+:invalid_choice
+echo Invalid choice! Please enter 1-5.
+pause
 goto :end
 
 :end
 echo.
-echo ========================================
-echo           TESTING COMPLETED
-echo ========================================
-echo.
-echo Results:
-echo - HTML report: build\reports\tests\test\index.html
-echo - XML reports: build\test-results\test\
-echo - Code coverage: ~75%
-echo.
-pause
-goto :exit
-
-:exit
-echo.
 echo Goodbye!
-timeout /t 2 >nul
-exit
