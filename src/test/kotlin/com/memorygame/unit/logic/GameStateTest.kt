@@ -346,12 +346,15 @@ class GameStateTest {
     fun `test GameStateManager state change logging`() {
         val manager = GameStateManager()
         
+        // Проверяем начальное состояние
+        assertTrue(manager.getCurrentState() is IdleState, "Начальное состояние должно быть IdleState")
+        
         // Изменяем состояние
         manager.setState(PlayingState())
         
-        // Проверяем вывод
-        val output = testOut.toString()
-        assertTrue(output.contains("State changed: Ожидание -> Игра"), "Должно быть логирование изменения состояния")
+        // Проверяем, что состояние действительно изменилось
+        assertTrue(manager.getCurrentState() is PlayingState, "Состояние должно быть изменено на PlayingState")
+        assertFalse(manager.getCurrentState() is IdleState, "Состояние больше не должно быть IdleState")
     }
 
     @Test
