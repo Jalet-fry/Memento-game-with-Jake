@@ -1,12 +1,15 @@
 package com.memorygame.ui
 
 import com.memorygame.backend.*
+import com.memorygame.data.GameSession
 import com.memorygame.logic.GameLogic
 import com.memorygame.logic.GameState
 import com.memorygame.logic.GameStateManager
 import kotlinx.coroutines.*
 import java.awt.*
 import java.awt.event.ActionListener
+import java.text.SimpleDateFormat
+import java.util.Date
 import javax.swing.*
 
 /**
@@ -40,6 +43,7 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
     private lateinit var controlPanel: JPanel
     private lateinit var infoPanel: JPanel
     private lateinit var buttonPanel: JPanel
+    private lateinit var difficultyButton: JButton
     
     // Таймер и анимации
     private var timerJob: Job? = null
@@ -76,7 +80,11 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         setupUI()
         initGame()
         startTimer()
-        showAnimation("start")
+        // Показываем анимацию асинхронно, чтобы не блокировать инициализацию
+        SwingUtilities.invokeLater {
+            showAnimation("start")
+        }
+        updatePlayerStatus()
     }
     
     /**
@@ -157,19 +165,17 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
             }
         }
         
-        val soundToggleButton = JButton("🔊 Звук: ВКЛ").apply {
+        difficultyButton = JButton().apply {
             font = Font("Arial", Font.BOLD, 12)
             addActionListener {
-                SettingsManager.toggleSound()
-                text = if (SettingsManager.soundEnabled) "🔊 Звук: ВКЛ" else "🔊 Звук: ВЫКЛ"
-                GameEventManager.notifyObservers(GameEvent.SETTINGS_CHANGED, "sound")
-            }
-        }
-        
-        val difficultyButton = JButton("📊 Сложность: 4x4").apply {
-            font = Font("Arial", Font.BOLD, 12)
-            addActionListener {
+                val currentDifficulty = SettingsManager.difficulty
                 val options = arrayOf("4x4 (Легко)", "6x6 (Средне)", "8x8 (Сложно)")
+                val defaultChoice = when (currentDifficulty) {
+                    4 -> 0
+                    6 -> 1
+                    8 -> 2
+                    else -> 0
+                }
                 val choice = JOptionPane.showOptionDialog(
                     this@MemoryGame,
                     "Выберите уровень сложности:",
@@ -178,18 +184,32 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
                     JOptionPane.QUESTION_MESSAGE,
                     null,
                     options,
-                    options[0]
+                    options[defaultChoice]
                 )
                 when (choice) {
-                    0 -> { SettingsManager.setDifficulty(4); text = "📊 Сложность: 4x4" }
-                    1 -> { SettingsManager.setDifficulty(6); text = "📊 Сложность: 6x6" }
-                    2 -> { SettingsManager.setDifficulty(8); text = "📊 Сложность: 8x8" }
+                    0 -> {
+                        SettingsManager.setDifficulty(4)
+                        DifficultyManager.setStrategy(4)
+                        updateDifficultyButtonText()
+                    }
+                    1 -> {
+                        SettingsManager.setDifficulty(6)
+                        DifficultyManager.setStrategy(6)
+                        updateDifficultyButtonText()
+                    }
+                    2 -> {
+                        SettingsManager.setDifficulty(8)
+                        DifficultyManager.setStrategy(8)
+                        updateDifficultyButtonText()
+                    }
                 }
                 if (choice != JOptionPane.CLOSED_OPTION) {
                     resetGame()
                 }
             }
         }
+        // Обновляем текст кнопки в зависимости от текущей сложности
+        updateDifficultyButtonText()
         
         val statsButton = JButton("📈 Статистика").apply {
             font = Font("Arial", Font.BOLD, 12)
@@ -206,10 +226,15 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
             }
         }
         
+        val playerButton = JButton("👤 Игрок").apply {
+            font = Font("Arial", Font.BOLD, 12)
+            addActionListener { showPlayerSelection() }
+        }
+        
         controlPanel.add(animToggleButton)
-        controlPanel.add(soundToggleButton)
         controlPanel.add(difficultyButton)
         controlPanel.add(themeButton)
+        controlPanel.add(playerButton)
         controlPanel.add(statsButton)
     }
     
@@ -268,8 +293,10 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         cards.clear()
         gamePanel.removeAll()
         
+        // Синхронизируем DifficultyManager с SettingsManager
+        val difficulty = SettingsManager.difficulty
+        DifficultyManager.setStrategy(difficulty)
         val strategy = DifficultyManager.getCurrentStrategy()
-        DifficultyManager.setStrategy(strategy.gridSize)
         
         // Используем CardFactory для создания карточек
         val cardSet = CardFactory.createCardSet(strategy.gridSize, imagePaths)
@@ -286,7 +313,7 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         
         gameLogic.resetGame()
         attemptsLabel.text = "Попытки: ${gameLogic.attempts}"
-        statusLabel.text = "Найдите пары! Сложность: ${strategy.gridSize}x${strategy.gridSize}"
+        updatePlayerStatus()
         statusLabel.foreground = Color(100, 200, 100)
         
         gamePanel.revalidate()
@@ -303,13 +330,11 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
             firstCard == null -> {
                 firstCard = card
                 card.flip()
-                playSound("flip")
                 GameEventManager.notifyObservers(GameEvent.CARD_FLIPPED, card)
             }
             secondCard == null && card != firstCard -> {
                 secondCard = card
                 card.flip()
-                playSound("flip")
                 updateAttemptsLabel()
                 checkMatch()
             }
@@ -330,7 +355,6 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         if (isMatch) {
             // Совпадение!
             showAnimation("match")
-            playSound("match")
             SwingUtilities.invokeLater {
                 first.setMatched()
                 second.setMatched()
@@ -347,7 +371,6 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         } else {
             // Не совпали
             showAnimation("miss")
-            playSound("miss")
             statusLabel.text = "Не совпало! Попробуйте еще"
             statusLabel.foreground = Color.ORANGE
             
@@ -374,15 +397,33 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         if (gameLogic.checkWin()) {
             timerJob?.cancel()
             showAnimation("win")
-            playSound("win")
             statusLabel.text = "🎉 ПОБЕДА! 🎉"
             statusLabel.foreground = Color.YELLOW
             
-            // Обновляем статистику через SettingsManager
+            // Сохраняем игровую сессию через StatisticsManager
+            saveGameSession(won = true)
+            
+            // Обновляем статистику через SettingsManager (для обратной совместимости)
             SettingsManager.updateGameStats(gameLogic.elapsedSeconds, gameLogic.matchedPairs)
             
             val strategy = DifficultyManager.getCurrentStrategy()
             val rating = gameLogic.getGameRating()
+            
+            // Получаем статистику игрока из StatisticsManager
+            val currentPlayer = StatisticsManager.getCurrentPlayer()
+            val playerStats = if (currentPlayer != null) {
+                val records = StatisticsManager.getPlayerRecords(currentPlayer.name)
+                """
+                🎮 Игрок: ${currentPlayer.name}
+                🎮 Всего игр: ${records["totalGames"]}
+                🏆 Побед: ${records["wonGames"]}
+                📊 Процент побед: ${String.format("%.1f", records["winRate"] as Double)}%
+                🏆 Лучшее время: ${records["bestTimeFormatted"]}
+                """
+            } else {
+                ""
+            }
+            
             val message = """
                 🎉 Поздравляем! Вы выиграли! 🎉
                 
@@ -391,10 +432,9 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
                 📊 Сложность: ${strategy.gridSize}x${strategy.gridSize}
                 ⭐ Оценка: ${"⭐".repeat(rating)}
                 
-                🏆 Лучшее время: ${if (SettingsManager.bestTime == Int.MAX_VALUE) "Нет" else gameLogic.formatTime(SettingsManager.bestTime)}
-                🎮 Игр сыграно: ${SettingsManager.gamesPlayed}
+                $playerStats
                 
-                ${if (SettingsManager.achievements.isNotEmpty()) "🏅 Достижения: ${SettingsManager.achievements.joinToString(", ")}" else ""}
+                ${if (currentPlayer != null && currentPlayer.getAchievementsSet().isNotEmpty()) "🏅 Достижения: ${currentPlayer.getAchievementsSet().joinToString(", ")}" else ""}
                 
                 Хотите сыграть еще раз?
             """.trimIndent()
@@ -410,6 +450,54 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
             if (result == JOptionPane.YES_OPTION) {
                 resetGame()
             }
+        }
+    }
+    
+    /**
+     * Сохраняет игровую сессию
+     */
+    private fun saveGameSession(won: Boolean) {
+        val currentPlayer = StatisticsManager.getCurrentPlayer()
+        
+        // Проверяем, что текущий игрок установлен перед сохранением
+        if (currentPlayer == null) {
+            println("Предупреждение: Текущий игрок не установлен. Статистика не будет сохранена.")
+            // Показываем предупреждение пользователю
+            JOptionPane.showMessageDialog(
+                this,
+                "Текущий игрок не установлен. Статистика не будет сохранена.\nПожалуйста, выберите игрока в меню.",
+                "Предупреждение",
+                JOptionPane.WARNING_MESSAGE
+            )
+            return
+        }
+        
+        try {
+            val strategy = DifficultyManager.getCurrentStrategy()
+            val rating = gameLogic.getGameRating()
+            
+            val gameSession = GameSession(
+                playerName = currentPlayer.name,
+                difficulty = strategy.gridSize,
+                time = gameLogic.elapsedSeconds,
+                attempts = gameLogic.attempts,
+                matchedPairs = gameLogic.matchedPairs,
+                date = System.currentTimeMillis(),
+                won = won,
+                rating = rating
+            )
+            
+            StatisticsManager.updatePlayerStats(gameSession)
+        } catch (e: Exception) {
+            println("Ошибка при сохранении статистики: ${e.message}")
+            e.printStackTrace()
+            // Показываем ошибку пользователю
+            JOptionPane.showMessageDialog(
+                this,
+                "Не удалось сохранить статистику игры.\nОшибка: ${e.message}",
+                "Ошибка сохранения",
+                JOptionPane.ERROR_MESSAGE
+            )
         }
     }
     
@@ -463,7 +551,7 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
         
         updateTimerLabel()
         updateAttemptsLabel()
-        statusLabel.text = "Найдите пары!"
+        updatePlayerStatus()
         statusLabel.foreground = Color(100, 200, 100)
         
         initGame()
@@ -519,19 +607,74 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
      * Показывает статистику игрока
      */
     private fun showStatistics() {
+        val currentPlayer = StatisticsManager.getCurrentPlayer()
+        
+        if (currentPlayer == null) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Игрок не выбран. Пожалуйста, выберите игрока в меню.",
+                "📊 Статистика",
+                JOptionPane.WARNING_MESSAGE
+            )
+            return
+        }
+        
+        val records = StatisticsManager.getPlayerRecords(currentPlayer.name)
+        val bestTimesByDifficulty = records["bestTimesByDifficulty"] as? Map<*, *> ?: emptyMap<Int, Int>()
+        val recentGames = StatisticsManager.getPlayerGameHistory(currentPlayer.name, limit = 10)
+        
+        val bestTimesText = if (bestTimesByDifficulty.isNotEmpty()) {
+            bestTimesByDifficulty.entries.joinToString("\n") { entry ->
+                val diff = entry.key as? Int ?: 4
+                val time = entry.value as? Int ?: 0
+                val mins = time / 60
+                val secs = time % 60
+                "  • ${diff}x${diff}: ${String.format("%02d:%02d", mins, secs)}"
+            }
+        } else {
+            "  Нет рекордов"
+        }
+        
+        val recentGamesText = if (recentGames.isNotEmpty()) {
+            val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm")
+            recentGames.take(5).joinToString("\n") { game ->
+                val date = dateFormat.format(Date(game.date))
+                val result = if (game.won) "✅ Победа" else "❌ Поражение"
+                "  • $date - ${game.getFormattedTime()} - $result - ${game.getDifficultyString()}"
+            }
+        } else {
+            "  Нет игр"
+        }
+        
+        val achievementsList = (records["achievements"] as? List<String>) ?: emptyList<String>()
+        val achievementsText = if (achievementsList.isEmpty()) {
+            "  Пока нет достижений"
+        } else {
+            achievementsList.joinToString("\n") { "  • $it" }
+        }
+        
         val message = """
-            📊 СТАТИСТИКА ИГРЫ 📊
+            📊 СТАТИСТИКА ИГРОКА: ${currentPlayer.name} 📊
             
-            🎮 Всего игр: ${SettingsManager.gamesPlayed}
-            🏆 Лучшее время: ${if (SettingsManager.bestTime == Int.MAX_VALUE) "Нет" else formatTime(SettingsManager.bestTime)}
-            🎯 Всего совпадений: ${SettingsManager.totalMatches}
+            🎮 Всего игр: ${records["totalGames"]}
+            ✅ Побед: ${records["wonGames"]}
+            📊 Процент побед: ${String.format("%.1f", records["winRate"] as Double)}%
+            🏆 Лучшее время: ${records["bestTimeFormatted"]}
+            🎯 Всего попыток: ${records["totalAttempts"]}
+            📈 Среднее попыток: ${String.format("%.1f", records["averageAttempts"] as Double)}
+            🎯 Всего совпадений: ${records["totalMatches"]}
             
-            🏅 Достижения (${SettingsManager.achievements.size}):
-            ${if (SettingsManager.achievements.isEmpty()) "Пока нет достижений" else SettingsManager.achievements.joinToString("\n")}
+            🏆 Рекорды по сложности:
+            $bestTimesText
+            
+            🏅 Достижения (${achievementsList.size}):
+            $achievementsText
+            
+            📜 Последние игры:
+            $recentGamesText
             
             🎨 Текущие настройки:
             • Анимации: ${if (SettingsManager.animationsEnabled) "Включены" else "Выключены"}
-            • Звук: ${if (SettingsManager.soundEnabled) "Включен" else "Выключен"}
             • Сложность: ${SettingsManager.difficulty}x${SettingsManager.difficulty}
             
             ${DifficultyManager.getCurrentStrategyInfo()}
@@ -546,16 +689,49 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
     }
     
     /**
-     * Воспроизводит звуковой эффект
+     * Показывает диалог выбора игрока
      */
-    private fun playSound(soundType: String) {
-        if (!SettingsManager.soundEnabled) return
+    private fun showPlayerSelection() {
+        val dialog = PlayerSelectionDialog(this)
+        val selectedPlayer = dialog.showDialog()
         
-        when (soundType) {
-            "match" -> println("🔊 Звук совпадения")
-            "miss" -> println("🔊 Звук промаха")
-            "win" -> println("🔊 Звук победы")
-            "flip" -> println("🔊 Звук переворота карты")
+        if (selectedPlayer != null) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Игрок '${selectedPlayer.name}' выбран!",
+                "Игрок выбран",
+                JOptionPane.INFORMATION_MESSAGE
+            )
+            // Обновляем статус игры
+            updatePlayerStatus()
+        }
+    }
+    
+    /**
+     * Обновляет статус игрока в интерфейсе
+     */
+    private fun updatePlayerStatus() {
+        val currentPlayer = StatisticsManager.getCurrentPlayer()
+        val strategy = DifficultyManager.getCurrentStrategy()
+        if (currentPlayer != null) {
+            statusLabel.text = "Игрок: ${currentPlayer.name} | Сложность: ${strategy.gridSize}x${strategy.gridSize}"
+        } else {
+            statusLabel.text = "Найдите пары! Сложность: ${strategy.gridSize}x${strategy.gridSize}"
+        }
+    }
+    
+    /**
+     * Обновляет текст кнопки сложности
+     */
+    private fun updateDifficultyButtonText() {
+        if (::difficultyButton.isInitialized) {
+            val difficulty = SettingsManager.difficulty
+            difficultyButton.text = when (difficulty) {
+                4 -> "📊 Сложность: 4x4"
+                6 -> "📊 Сложность: 6x6"
+                8 -> "📊 Сложность: 8x8"
+                else -> "📊 Сложность: 4x4"
+            }
         }
     }
     
@@ -615,24 +791,21 @@ class MemoryGame : JFrame("Игра Мементо"), GameObserver {
     override fun onGameEvent(event: GameEvent, data: Any?) {
         when (event) {
             GameEvent.CARD_FLIPPED -> {
-                playSound("flip")
+                // Card flipped event handled
             }
             GameEvent.CARDS_MATCHED -> {
                 showAnimation("match")
-                playSound("match")
                 statusLabel.text = "✨ Совпадение! (${gameLogic.matchedPairs}/${DifficultyManager.getCurrentStrategy().totalPairs}) ✨"
                 statusLabel.foreground = Color.GREEN
                 checkWin()
             }
             GameEvent.CARDS_MISMATCHED -> {
                 showAnimation("miss")
-                playSound("miss")
                 statusLabel.text = "Не совпало! Попробуйте еще"
                 statusLabel.foreground = Color.ORANGE
             }
             GameEvent.GAME_WON -> {
                 showAnimation("win")
-                playSound("win")
             }
             GameEvent.GAME_RESET -> {
                 statusLabel.text = "Найдите пары!"
