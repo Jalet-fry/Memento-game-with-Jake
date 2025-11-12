@@ -99,7 +99,7 @@ abstract class CardEventHandler {
      * @param card карточка
      */
     protected open fun onValidationFailed(game: MemoryGame, card: MemoryCard) {
-        println("Validation failed for card ${card.getCardId()}")
+        // Validation failed - silently ignore
     }
     
     /**
@@ -119,7 +119,7 @@ abstract class CardEventHandler {
 class CardFlipHandler : CardEventHandler() {
     
     override fun onPreProcess(game: MemoryGame, card: MemoryCard) {
-        println("Preparing to flip card ${card.getCardId()}")
+        // Preparing to flip card
     }
     
     override fun processCardEvent(game: MemoryGame, card: MemoryCard): Any? {
@@ -128,7 +128,7 @@ class CardFlipHandler : CardEventHandler() {
     }
     
     override fun onPostProcess(game: MemoryGame, card: MemoryCard, result: Any?) {
-        println("Card ${card.getCardId()} flipped successfully")
+        // Card flipped successfully
     }
     
     override fun notifyObservers(game: MemoryGame, card: MemoryCard, result: Any?) {
@@ -153,7 +153,7 @@ class CardMatchHandler : CardEventHandler() {
     }
     
     override fun onPreProcess(game: MemoryGame, card: MemoryCard) {
-        println("Processing card match for cards ${game.getFirstCard()?.getCardId()}")
+        // Processing card match
     }
     
     override fun processCardEvent(game: MemoryGame, card: MemoryCard): Any? {
@@ -170,7 +170,7 @@ class CardMatchHandler : CardEventHandler() {
     }
     
     override fun onPostProcess(game: MemoryGame, card: MemoryCard, result: Any?) {
-        println("Cards matched successfully")
+        // Cards matched successfully
         
         // Проверяем условие победы
         val strategy = DifficultyManager.getCurrentStrategy()
@@ -202,7 +202,7 @@ class CardMismatchHandler : CardEventHandler() {
     }
     
     override fun onPreProcess(game: MemoryGame, card: MemoryCard) {
-        println("Processing card mismatch")
+        // Processing card mismatch
     }
     
     override fun processCardEvent(game: MemoryGame, card: MemoryCard): Any? {
@@ -225,7 +225,7 @@ class CardMismatchHandler : CardEventHandler() {
     }
     
     override fun onPostProcess(game: MemoryGame, card: MemoryCard, result: Any?) {
-        println("Cards flipped back after mismatch")
+        // Cards flipped back after mismatch
     }
     
     override fun notifyObservers(game: MemoryGame, card: MemoryCard, result: Any?) {

@@ -13,7 +13,6 @@ object SettingsManager {
     
     // Настройки игры
     private var _animationsEnabled = true
-    private var _soundEnabled = true
     private var _currentTheme = "dark"
     private var _difficulty = 4
     
@@ -25,7 +24,6 @@ object SettingsManager {
     
     // Getters для настроек
     val animationsEnabled: Boolean get() = _animationsEnabled
-    val soundEnabled: Boolean get() = _soundEnabled
     val currentTheme: String get() = _currentTheme
     val difficulty: Int get() = _difficulty
     
@@ -40,13 +38,6 @@ object SettingsManager {
      */
     fun toggleAnimations() {
         _animationsEnabled = !_animationsEnabled
-    }
-    
-    /**
-     * Переключает состояние звука
-     */
-    fun toggleSound() {
-        _soundEnabled = !_soundEnabled
     }
     
     /**
@@ -73,6 +64,9 @@ object SettingsManager {
      * Обновляет статистику игры
      * @param time время игры в секундах
      * @param matches количество совпадений
+     * 
+     * @deprecated Используйте StatisticsManager.updatePlayerStats() вместо этого метода
+     * Этот метод сохраняется для обратной совместимости
      */
     fun updateGameStats(time: Int, matches: Int) {
         _gamesPlayed++
@@ -84,6 +78,13 @@ object SettingsManager {
         
         // Проверяем достижения
         checkAchievements(time)
+        
+        // Обновляем статистику через StatisticsManager, если игрок установлен
+        val currentPlayer = StatisticsManager.getCurrentPlayer()
+        if (currentPlayer != null) {
+            // Создаем игровую сессию (без сохранения, так как игра еще не завершена)
+            // Реальное сохранение произойдет в MemoryGame после завершения игры
+        }
     }
     
     /**
@@ -134,7 +135,6 @@ object SettingsManager {
      */
     fun resetToDefaults() {
         _animationsEnabled = true
-        _soundEnabled = true
         _currentTheme = "dark"
         _difficulty = 4
     }
@@ -145,7 +145,6 @@ object SettingsManager {
     fun getSettingsString(): String {
         return """
             Animations: ${if (_animationsEnabled) "ON" else "OFF"}
-            Sound: ${if (_soundEnabled) "ON" else "OFF"}
             Theme: $_currentTheme
             Difficulty: ${_difficulty}x$_difficulty
             Games played: $_gamesPlayed

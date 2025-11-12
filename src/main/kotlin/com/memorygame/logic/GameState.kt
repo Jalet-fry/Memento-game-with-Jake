@@ -139,9 +139,8 @@ class GameStateManager {
      * @param state новое состояние
      */
     fun setState(state: GameState) {
-        val previousState = currentState
         currentState = state
-        println("State changed: ${previousState.name} -> ${currentState.name}")
+        // State changed - debug output removed
     }
     
     /**

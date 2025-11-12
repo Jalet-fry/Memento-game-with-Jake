@@ -24,7 +24,6 @@ class SettingsManagerTest {
     fun `test initial default settings`() {
         // Проверяем начальные настройки по умолчанию
         assertTrue(SettingsManager.animationsEnabled)
-        assertTrue(SettingsManager.soundEnabled)
         assertEquals("dark", SettingsManager.currentTheme)
         assertEquals(4, SettingsManager.difficulty)
     }
@@ -48,18 +47,6 @@ class SettingsManagerTest {
         
         SettingsManager.toggleAnimations()
         assertTrue(SettingsManager.animationsEnabled)
-    }
-
-    @Test
-    fun `test toggle sound`() {
-        // Тестируем переключение звука
-        assertTrue(SettingsManager.soundEnabled)
-        
-        SettingsManager.toggleSound()
-        assertFalse(SettingsManager.soundEnabled)
-        
-        SettingsManager.toggleSound()
-        assertTrue(SettingsManager.soundEnabled)
     }
 
     @Test
@@ -204,14 +191,12 @@ class SettingsManagerTest {
     fun `test reset to defaults`() {
         // Тестируем сброс настроек к значениям по умолчанию
         SettingsManager.toggleAnimations()
-        SettingsManager.toggleSound()
         SettingsManager.setTheme("light")
         SettingsManager.setDifficulty(8)
         
         SettingsManager.resetToDefaults()
         
         assertTrue(SettingsManager.animationsEnabled)
-        assertTrue(SettingsManager.soundEnabled)
         assertEquals("dark", SettingsManager.currentTheme)
         assertEquals(4, SettingsManager.difficulty)
     }
@@ -225,7 +210,6 @@ class SettingsManagerTest {
         
         // Проверяем основные компоненты строки настроек
         assertTrue(settingsString.contains("Animations: ON"))
-        assertTrue(settingsString.contains("Sound: ON"))
         assertTrue(settingsString.contains("Theme: dark"))
         assertTrue(settingsString.contains("Difficulty: 4x4"))
         assertTrue(settingsString.contains("Games played: 1"))
@@ -276,7 +260,6 @@ class SettingsManagerTest {
         // Комплексный тест сценария игры
         SettingsManager.setTheme("light")
         SettingsManager.setDifficulty(6)
-        SettingsManager.toggleSound()
         
         // Играем несколько игр
         SettingsManager.updateGameStats(120, 18) // Первая игра
@@ -291,7 +274,6 @@ class SettingsManagerTest {
         assertTrue(SettingsManager.achievements.contains("🚀 Быстрая победа!"))
         
         // Проверяем настройки
-        assertFalse(SettingsManager.soundEnabled)
         assertEquals("light", SettingsManager.currentTheme)
         assertEquals(6, SettingsManager.difficulty)
     }
