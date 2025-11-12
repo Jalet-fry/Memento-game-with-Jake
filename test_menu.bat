@@ -39,7 +39,7 @@ echo.
 echo [RUNNING ALL TESTS WITH JACOCO...]
 call .\gradlew.bat clean test --rerun-tasks jacocoTestReport openJacocoReport
 set TEST_EXIT_CODE=%ERRORLEVEL%
-if %TEST_EXIT_CODE%==0 (
+if "%TEST_EXIT_CODE%"=="0" (
     echo.
     echo [TESTS COMPLETED SUCCESSFULLY]
     echo JaCoCo HTML report should have opened automatically!
